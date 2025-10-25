@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Video Manager Pro</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --text: #111827;
+      --card: #ffffff;
+      --primary: #2563eb;
+    }
+    body.dark {
+      --bg: #0f172a;
+      --text: #e2e8f0;
+      --card: #1e293b;
+      --primary: #3b82f6;
+    }
+    body {
+      font-family: "Poppins", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      transition: all 0.3s ease;
+    }
+    header {
+      background: var(--primary);
+      color: white;
+      text-align: center;
+      padding: 15px;
+      font-size: 1.6em;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .toggle-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-right: 15px;
+    }
+    .container {
+      max-width: 850px;
+      margin: 30px auto;
+      background: var(--card);
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 25px;
+    }
+    input, textarea {
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      background: transparent;
+      color: var(--text);
+    }
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      margin-top: 10px;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .video-list {
+      margin-top: 25px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 15px;
+    }
+    .video-card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease;
+    }
+    .video-card:hover {
+      transform: scale(1.02);
+    }
+    .thumb {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+    }
+    .card-body {
+      padding: 12px;
+    }
+    .card-body h3 {
+      margin: 5px 0;
+      font-size: 1.1em;
+    }
+    .card-body p {
+      font-size: 0.9em;
+      opacity: 0.8;
+    }
+    .delete-btn {
+      background: #dc2626;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .delete-btn:hover {
+      background: #b91c1c;
+    }
+    .search {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-bottom: 15px;
+      background: transparent;
+      color: var(--text);
+    }
+    iframe {
+      width: 100%;
+      height: 315px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span style="margin-left:15px;">🎥 YouTube Video Manager Pro</span>
+    <button class="toggle-btn" onclick="toggleTheme()">🌙</button>
+  </header>
+
+  <div class="container">
+    <h2>Add New Video</h2>
+    <input type="text" id="videoUrl" placeholder="YouTube Video URL" />
+    <input type="text" id="title" placeholder="Video Title" />
+    <textarea id="description" placeholder="Video Description"></textarea>
+    <button onclick="addVideo()">Add Video</button>
+
+    <h2 style="margin-top:30px;">My Videos</h2>
+    <input type="text" class="search" id="searchBar" placeholder="Search videos..." onkeyup="searchVideos()" />
+
+    <div class="video-list" id="videoList"></div>
+  </div>
+
+  <script>
+    const videoList = document.getElementById("videoList");
+    const toggleBtn = document.querySelector(".toggle-btn");
+    const body = document.body;
+
+    // Theme toggle
+    function toggleTheme() {
+      body.classList.toggle("dark");
+      localStorage.setItem("theme", body.classList.contains("dark") ? "dark" : "light");
+      toggleBtn.textContent = body.classList.contains("dark") ? "☀️" : "🌙";
+    }
+
+    // Load theme on startup
+    window.onload = () => {
+      if (localStorage.getItem("theme") === "dark") {
+        body.classList.add("dark");
+        toggleBtn.textContent = "☀️";
+      }
+      renderVideos();
+    };
+
+    function getVideoId(url) {
+      const match = url.match(/(?:v=|youtu\.be\/)([^&\n?#]+)/);
+      return match ? match[1] : null;
+    }
+
+    function addVideo() {
+      const url = document.getElementById("videoUrl").value.trim();
+      const title = document.getElementById("title").value.trim();
+      const desc = document.getElementById("description").value.trim();
+      const id = getVideoId(url);
+
+      if (!id) {
+        alert("Invalid YouTube URL!");
+        return;
+      }
+
+      let videos = JSON.parse(localStorage.getItem("videos")) || [];
+      videos.push({ id, title, desc });
+      localStorage.setItem("videos", JSON.stringify(videos));
+
+      document.getElementById("videoUrl").value = "";
+      document.getElementById("title").value = "";
+      document.getElementById("description").value = "";
+
+      renderVideos();
+    }
+
+    function renderVideos() {
+      let videos = JSON.parse(localStorage.getItem("videos")) || [];
+      videoList.innerHTML = "";
+
+      videos.forEach((video, index) => {
+        const thumb = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
+        const card = document.createElement("div");
+        card.className = "video-card";
+        card.innerHTML = `
+          <img src="${thumb}" class="thumb" onclick="openVideo('${video.id}')" />
+          <div class="card-body">
+            <h3>${video.title}</h3>
+            <p>${video.desc}</p>
+            <button class="delete-btn" onclick="deleteVideo(${index})">Delete</button>
+          </div>
+        `;
+        videoList.appendChild(card);
+      });
+    }
+
+    function openVideo(id) {
+      const embed = `https://www.youtube.com/embed/${id}`;
+      const win = window.open("", "_blank");
+      win.document.write(`
+        <title>Watch Video</title>
+        <iframe width="100%" height="100%" src="${embed}" frameborder="0" allowfullscreen></iframe>
+      `);
+    }
+
+    function deleteVideo(index) {
+      let videos = JSON.parse(localStorage.getItem("videos")) || [];
+      videos.splice(index, 1);
+      localStorage.setItem("videos", JSON.stringify(videos));
+      renderVideos();
+    }
+
+    function searchVideos() {
+      const query = document.getElementById("searchBar").value.toLowerCase();
+      let videos = JSON.parse(localStorage.getItem("videos")) || [];
+      const filtered = videos.filter(v => v.title.toLowerCase().includes(query));
+      videoList.innerHTML = "";
+      filtered.forEach((video, index) => {
+        const thumb = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
+        const card = document.createElement("div");
+        card.className = "video-card";
+        card.innerHTML = `
+          <img src="${thumb}" class="thumb" onclick="openVideo('${video.id}')" />
+          <div class="card-body">
+            <h3>${video.title}</h3>
+            <p>${video.desc}</p>
+            <button class="delete-btn" onclick="deleteVideo(${index})">Delete</button>
+          </div>
+        `;
+        videoList.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
